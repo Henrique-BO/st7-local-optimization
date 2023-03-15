@@ -1,15 +1,136 @@
-#---------------------------------------------------------------
-# S. Vialle
-# February 2023
-#---------------------------------------------------------------
-
 import subprocess
 import os
 import json
 import pandas as pd
+import matplotlib.pyplot as plt
 
+
+# Constants
 ISO3DFD_DIR = os.path.expanduser("~") + "/iso3dfd-st7"
-SAVE_DIR = os.path.join(os.getcwd(), "results")
+RESULTS_DIR = os.path.join(os.getcwd(), "results")
+
+
+class Result:
+	"""
+	Class for interfacing with optimization results, enabling loading, saving and plotting.
+	
+	Each instantiation corresponds to an optimization run.
+	History of attempted solutions are saved in a numbered .csv file, and parameters and metadata
+	are saved in a common summary.json file
+	"""
+	def __init__(self, id=None):
+		self.id = None
+		self.json_fn = os.path.join(RESULTS_DIR, "summary.json")
+		if id != None:
+			self.load_from_id(id)
+
+	def load_from_id(self, id):
+		self.id = id
+		with open(self.json_fn, "r") as f:
+			summary = json.load(f)
+		id_str = str(id)
+		self.params = summary[id_str]["params"]
+		self.S_best = summary[id_str]["S_best"]
+		self.E_best = summary[id_str]["E_best"]
+		self.runtime = summary[id_str]["runtime"]
+
+		csv_fn = os.path.join(RESULTS_DIR, f"{self.id:05d}.csv")
+		self.data = pd.read_csv(csv_fn, index_col=0)
+
+	def set_data(self, params, S_list, E_list, S_best, E_best, runtime):
+		self.data = pd.DataFrame(S_list, columns = ["Olevel", "simd", "NbTh", "n1_thrd_block", "n2_thrd_block", "n3_thrd_block"])
+		self.data["E"] = E_list
+		self.params = params
+		self.S_best = S_best
+		self.E_best = E_best
+		self.runtime = runtime
+
+	def calculate_id(self):
+			i = -1
+			for name in os.listdir(RESULTS_DIR):
+					if name[-4:] == ".csv":
+						i = max(i, int(name[:-4]))
+			self.id = i+1
+
+	def save(self):
+			if not os.path.exists(RESULTS_DIR):
+				subprocess.run(f"mkdir -p {RESULTS_DIR}", shell=True, stdout=subprocess.PIPE)
+			if self.id == None:
+					self.calculate_id()
+			if os.path.exists(self.json_fn):
+					with open(self.json_fn, "r") as f:
+							summary = json.load(f)
+			else:
+					summary = {}
+			id_str = str(self.id)
+			summary[id_str] = {}
+			summary[id_str]["params"] = self.params
+			summary[id_str]["S_best"] = self.S_best
+			summary[id_str]["E_best"] = self.E_best
+			summary[id_str]["runtime"] = self.runtime
+			print("Saving summary file to", self.json_fn)
+			with open(self.json_fn, "w") as f:
+					json.dump(summary, f, indent=4)
+
+			csv_fn = os.path.join(RESULTS_DIR, f"{self.id:05d}.csv")
+			print("Saving result file to", csv_fn)
+			self.data.to_csv(csv_fn)
+
+	def print_summary(self):
+		print(f"=== Result for trial {self.id:05d} ===")
+		print("Parameters:")
+		for key in self.params:
+			print(f"\t{key}\t{self.params[key]}")
+		print(f"Executed in {self.runtime:.2f} s")
+		print(f"Best result: {self.E_best} MPoints/s with {self.S_best}")
+		print()
+		print(self.data)
+
+	def plot(self):
+		plt.figure()
+		plt.plot(self.data["E"], label=f"{self.id:05d}")
+		plt.xlabel("Iteration")
+		plt.ylabel("Throughput (MPoints/s)")
+		plt.legend()
+		plt.grid()
+
+
+class Algorithm:
+
+	name = ""
+	full_name = ""
+
+	def __init__(self, n1, n2, n3, S0, k_max):
+		self.n1 = n1
+		self.n2 = n2
+		self.n3 = n3
+		self.S0 = S0
+		self.k_max = k_max
+
+		self.params = {
+			"method": self.name,
+			"n1": self.n1,
+			"n2": self.n2,
+			"n3": self.n3,
+			"S0": self.S0,
+			"n_iter": self.k_max,
+		}
+
+	def print_params(self):
+		print(self.full_name)
+		print(self.params)
+
+	def cost(self, S):
+		return run(S, self.n1, self.n2, self.n3)
+
+	def optimize(self):
+		raise NotImplementedError
+
+	def save(self):
+		res = Result()
+		res.set_data(self.params, self.S_list, self.E_list, self.S_best, self.E_best, self.runtime)
+		res.save()
+
 
 def make(Olevel, simd):
 	"""
@@ -26,28 +147,26 @@ def make(Olevel, simd):
 		cmd = f"mkdir -p bin && cp {ISO3DFD_DIR}/bin/iso3dfd_dev13_cpu_{simd}.exe ./bin/{filename}"
 		print("Runing command:", cmd)
 		res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
-#	else:
-#		print("Configuration already exists")
 	return filename
 
 
 def run_iso3dfd(n1, n2, n3, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block,filename):
-        cmd = "bin/"+filename+" "+str(n1)+" "+str(n2)+" "+str(n3)+" "+str(NbTh)+" 100 "+str(n1_thrd_block)+\
-                " "+str(n2_thrd_block)+" "+str(n3_thrd_block)+" > output.txt"
-#        print("Executed command: " + cmd)
-#        print("---->")
-        res = subprocess.run(cmd,shell=True,stdout=subprocess.PIPE)
-
+	cmd = "bin/"+filename+" "+str(n1)+" "+str(n2)+" "+str(n3)+" "+str(NbTh)+" 100 "+str(n1_thrd_block)+\
+		" "+str(n2_thrd_block)+" "+str(n3_thrd_block)+" > output.txt"
+	res = subprocess.run(cmd,shell=True,stdout=subprocess.PIPE)
 
 def parse_output():
 	with open('output.txt', 'r') as f:
-		for line in f:
+		line_list = f.readlines()
+		for line in line_list:
 			if 'throughput:' in line:
 				a = float(line.split()[1])
 				cmd = "rm ./output.txt"
 				res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
-#				print("Running command:", cmd)
 				return a
+	print("Error parsing output")
+	print(*line_list, end="\n")
+	raise ValueError
 
 def run(params, n1=256, n2=256, n3=256):
 	Olevel = params[0]
@@ -121,74 +240,6 @@ def neighborhood(params, n1, n2, n3):
 		neighbors.append([Olevel, simd, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block * 2])
 
 	return neighbors
-
-
-class Result:
-        def __init__(self, id=None):
-                self.id = None
-                self.json_fn = os.path.join(SAVE_DIR, "summary.json")
-                if id != None:
-                        self.load_from_id(id)
-
-        def load_from_id(self, id):
-                self.id = id
-                with open(self.json_fn, "r") as f:
-                        summary = json.load(f)
-                id_str = str(id)
-                self.params = summary[id_str]["params"]
-                self.S_best = summary[id_str]["S_best"]
-                self.E_best = summary[id_str]["E_best"]
-                self.runtime = summary[id_str]["runtime"]
-
-                csv_fn = os.path.join(SAVE_DIR, f"{self.id:05d}.csv")
-                self.data = pd.read_csv(csv_fn, index_col=0)
-
-        def set_data(self, params, S_list, E_list, S_best, E_best, runtime):
-                self.data = pd.DataFrame(S_list, columns = ["Olevel", "simd", "NbTh", "n1_thrd_block", "n2_thrd_block", "n3_thrd_block"])
-                self.data["E"] = E_list
-                self.params = params
-                self.S_best = S_best
-                self.E_best = E_best
-                self.runtime = runtime
-
-        def calculate_id(self):
-                i = -1
-                for name in os.listdir(SAVE_DIR):
-                        if name[-4:] == ".csv":
-                            i = max(i, int(name[:-4]))
-                self.id = i+1
-
-        def save(self):
-                if not os.path.exists(SAVE_DIR):
-                    subprocess.run(f"mkdir -p {SAVE_DIR}", shell=True, stdout=subprocess.PIPE)
-                if self.id == None:
-                        self.calculate_id()
-                if os.path.exists(self.json_fn):
-                        with open(self.json_fn, "r") as f:
-                                summary = json.load(f)
-                else:
-                        summary = {}
-                id_str = str(self.id)
-                summary[id_str] = {}
-                summary[id_str]["params"] = self.params
-                summary[id_str]["S_best"] = self.S_best
-                summary[id_str]["E_best"] = self.E_best
-                summary[id_str]["runtime"] = self.runtime
-                print("Saving summary file to", self.json_fn)
-                with open(self.json_fn, "w") as f:
-                        json.dump(summary, f, indent=4)
-
-                csv_fn = os.path.join(SAVE_DIR, f"{self.id:05d}.csv")
-                print("Saving result file to", csv_fn)
-                self.data.to_csv(csv_fn)
-
-        def plot(self):
-                plt.figure()
-                plt.plot(self.data["E"], label=f"{self.id:05d}")
-                plt.xlabel("Iteration")
-                plt.ylabel("Throughput (MPoints/s)")
-                plt.legend()
-                plt.grid()
 
 #-----------------------------------------------------------------
 # Main code

@@ -2,5 +2,5 @@
 
 
 echo "======================================================"
-/usr/bin/mpirun -np 8 -map-by ppr:1:core:PE=1 -rank-by core python3 /usr/users/st76i2/st76i2_2/st7-local-optimization/simulated_annealing.py --dim 256,256,256
+/usr/bin/mpirun -np 8 -map-by ppr:1:core:PE=1 -rank-by core python3 ~/st7-local-optimization/tunneling_sa.py
 echo "======================================================"
