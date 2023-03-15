@@ -150,9 +150,9 @@ def make(Olevel, simd):
 	return filename
 
 
-def run_iso3dfd(n1, n2, n3, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block,filename):
-	cmd = "KMP_AFFINITY=balanced "+"bin/"+filename+" "+str(n1)+" "+str(n2)+" "+str(n3)+" "+str(NbTh)+" 100 "+str(n1_thrd_block)+\
-		" "+str(n2_thrd_block)+" "+str(n3_thrd_block)+" > output.txt"
+def run_iso3dfd(n1, n2, n3, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block, filename):
+	cmd = f"KMP_AFFINITY=balanced,granularity=core ./bin/{filename} {n1} {n2} {n3} {NbTh} 100 {n1_thrd_block} {n2_thrd_block} {n3_thrd_block} > output.txt"
+	# cmd = f"KMP_AFFINITY=compact ./bin/{filename} {n1} {n2} {n3} {NbTh} 100 {n1_thrd_block} {n2_thrd_block} {n3_thrd_block} > output.txt"
 	res = subprocess.run(cmd,shell=True,stdout=subprocess.PIPE)
 
 def parse_output():

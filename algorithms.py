@@ -19,7 +19,7 @@ class Greedy(Algorithm):
 		self.print_params()
 
 		S_best = self.S0
-		E_best = cost(S_best)
+		E_best = self.cost(S_best)
 		L_neigh = neighborhood(S_best, self.n1, self.n2, self.n3)
 
 		S_list = [S_best]
@@ -27,7 +27,7 @@ class Greedy(Algorithm):
 
 		k = 0
 		NewBetterS = True
-		while(k < k_max and NewBetterS):
+		while(k < self.k_max and NewBetterS):
 			S = L_neigh.pop()
 			E = self.cost(S)
 			for S_prime in L_neigh:
@@ -74,10 +74,10 @@ class ParallelGreedy(Algorithm):
 		#print("L_eigh:", L_neigh)
 		k=0
 		NewBetterS=True
-		while(k<k_max and NewBetterS):
+		while(k < self.k_max and NewBetterS):
 			for i in range(len(L_neigh)):
 				#print("L_neigh[i]: ", L_neigh[i])
-				TabE.append(cost(L_neigh[i]))
+				TabE.append(self.cost(L_neigh[i]))
 				#print(i,": ", TabE[i])
 			j = 0
 			for i in range(len(L_neigh)):
@@ -199,7 +199,7 @@ class TabuSA(SimulatedAnnealing):
 			S_new = random.choice(neighbors)
 			while S_new in Ltabu:
 				S_new = random.choice(neighbors)
-			E_new = cost(S_new)
+			E_new = self.cost(S_new)
 			print(f"[{k}/{self.k_max}] {S_new} {E_new}", end='')
 			if E_new > E or random.random() < math.exp(-(E-E_new)/T):
 				S = S_new
@@ -208,7 +208,7 @@ class TabuSA(SimulatedAnnealing):
 				if E > E_best:
 					S_best = S
 					E_best = E
-				Ltabu = fifo_add(S_best, Ltabu, tabu_size)
+				Ltabu = self.fifo_add(S_best, Ltabu)
 				print(" ACCEPTED")
 			else:
 				print(" REJECTED")
@@ -224,6 +224,12 @@ class TabuSA(SimulatedAnnealing):
 		self.E_list = E_list
 		self.runtime = time.time() - time0
 
+	def fifo_add(self, S_best, Ltabu):
+		if len(Ltabu) == self.tabu_size:
+			Ltabu.pop(0)
+		Ltabu.append(S_best)
+		return Ltabu
+
 
 class TunnelingSA(SimulatedAnnealing):
 
@@ -235,9 +241,9 @@ class TunnelingSA(SimulatedAnnealing):
 		
 		self.params["cost_fun"] = cost_fun
 		if cost_fun == "average":
-			self.cost = cost_average
+			self.cost = self.cost_average
 		elif cost_fun == "stochastic":
-			self.cost = cost_stochastic
+			self.cost = self.cost_stochastic
 		else:
 			raise ValueError("Invalid cost_fun")
 
@@ -254,7 +260,7 @@ class TunnelingSA(SimulatedAnnealing):
 	def cost_stochastic(self, S):
 		gamma = 0.004
 		E = run(S, self.n1, self.n2, self.n3)
-		return math.exp(-gamma*(E_tunnel - E)) - 1, E
+		return math.exp(-gamma*(self.E_tunnel - E)) - 1, E
 
 	def optimize(self):
 		time0 = time.time()
@@ -266,14 +272,14 @@ class TunnelingSA(SimulatedAnnealing):
 		E_tun = E_best_tun
 		E = E_best
 		neighbors = neighborhood(self.S0, self.n1, self.n2, self.n3)
-		T = T0
+		T = self.T0
 
 		S_list = [S_best]
 		E_list = [E_best]
 
 		for k in range(self.k_max):
 			S_new = random.choice(neighbors)
-			E_new_tun, E_new  = cost(S_new, E_tunnel, n1, n2, n3)
+			E_new_tun, E_new  = self.cost(S_new)
 			print(f"[{k}/{self.k_max}] {S_new} {E_new}", end='')
 			if E_new_tun > E_tun or random.random() < math.exp(-(E_tun-E_new_tun)/T):
 				S = S_new
