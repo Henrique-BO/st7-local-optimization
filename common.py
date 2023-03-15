@@ -151,7 +151,7 @@ def make(Olevel, simd):
 
 
 def run_iso3dfd(n1, n2, n3, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block,filename):
-	cmd = "bin/"+filename+" "+str(n1)+" "+str(n2)+" "+str(n3)+" "+str(NbTh)+" 100 "+str(n1_thrd_block)+\
+	cmd = "KMP_AFFINITY=balanced "+"bin/"+filename+" "+str(n1)+" "+str(n2)+" "+str(n3)+" "+str(NbTh)+" 100 "+str(n1_thrd_block)+\
 		" "+str(n2_thrd_block)+" "+str(n3_thrd_block)+" > output.txt"
 	res = subprocess.run(cmd,shell=True,stdout=subprocess.PIPE)
 
@@ -168,7 +168,7 @@ def parse_output():
 	print(*line_list, end="\n")
 	raise ValueError
 
-def run(params, n1=256, n2=256, n3=256):
+def run(params, n1=512, n2=512, n3=512):
 	Olevel = params[0]
 	simd = params[1]
 	NbTh = params[2]
@@ -217,10 +217,10 @@ def neighborhood(params, n1, n2, n3):
 		neighbors.append([Olevel, "avx", NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block])
 
 	# NbTh
-	if NbTh > 1:
-		neighbors.append([Olevel, simd, NbTh - 1, n1_thrd_block, n2_thrd_block, n3_thrd_block])
-	if NbTh < 32:
-		neighbors.append([Olevel, simd, NbTh + 1, n1_thrd_block, n2_thrd_block, n3_thrd_block])
+	if NbTh == 16:
+		neighbors.append([Olevel, simd, 16, n1_thrd_block, n2_thrd_block, n3_thrd_block])
+	if NbTh == 32:
+		neighbors.append([Olevel, simd, 32, n1_thrd_block, n2_thrd_block, n3_thrd_block])
 
 	# n1_thrd_block
 	if n1_thrd_block > 16:
@@ -250,7 +250,7 @@ if __name__ == "__main__":
 	t = run(params)
 	print(t)
 
-	neighbors = neighborhood(params, 256, 256, 256)
+	neighbors = neighborhood(params, 512, 512, 512)
 	print(neighbors)
 
 	params2 = neighbors[5]
