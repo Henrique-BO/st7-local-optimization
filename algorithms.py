@@ -304,3 +304,65 @@ class TunnelingSA(SimulatedAnnealing):
 		self.E_list = E_list
 		self.runtime = time.time() - time0
 
+
+class LAHC(Algorithm):
+
+	name = "lahc"
+	full_name = "Late Acceptance Hill Climbing"
+
+	def __init__(self, n1, n2, n3, S0, k_max, Lh):
+		super().__init__(n1, n2, n3, S0, k_max)
+
+		self.Lh = Lh
+		self.params["Lh"] = Lh
+
+	def optimize(self):
+		time0 = time.time()
+		self.print_params()
+
+		S_best = self.S0
+		E_best = self.cost(self.S0)
+		S = S_best
+		E = E_best
+		neighbors = neighborhood(S, self.n1, self.n2, self.n3)
+		fitness = [E_best] * self.Lh # history of previous costs
+
+		S_list = [S_best]
+		E_list = [E_best]
+
+		k_idle = 0
+		for k in range(self.k_max):
+			S_new = random.choice(neighbors)
+			E_new = self.cost(S_new)
+			print(f"[{k}/{self.k_max}] {S_new} {E_new}", end='')
+			
+			if E_new <= E:
+				k_idle += 1
+			else:
+				k_idle = 0
+
+			v = k % self.Lh
+			if E_new > fitness[v] or E_new >= E:
+				S = S_new
+				E = E_new
+				neighbors = neighborhood(S, self.n1, self.n2, self.n3)
+				print(" ACCEPTED")
+				if E >= E_best:
+					S_best = S
+					E_best = E
+			else:
+				print(" REJECTED")
+
+			if E > fitness[v]:
+				fitness[v] = E
+
+			print("\t", v, fitness)			
+			S_list.append(S)
+			E_list.append(E)
+		
+		self.S_best = S_best
+		self.E_best = E_best
+		self.S_list = S_list
+		self.E_list = E_list
+		self.runtime = time.time() - time0
+

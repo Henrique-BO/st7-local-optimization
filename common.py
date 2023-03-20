@@ -87,12 +87,11 @@ class Result:
 		print(self.data)
 
 	def plot(self):
-		plt.figure()
 		plt.plot(self.data["E"], label=f"{self.id:05d}")
 		plt.xlabel("Iteration")
 		plt.ylabel("Throughput (MPoints/s)")
 		plt.legend()
-		plt.grid()
+		plt.grid(True)
 
 
 class Algorithm:
@@ -224,20 +223,21 @@ def neighborhood(params, n1, n2, n3):
 
 	# n1_thrd_block
 	if n1_thrd_block > 16:
-		neighbors.append([Olevel, simd, NbTh, int(n1_thrd_block / 2), n2_thrd_block, n3_thrd_block])
+		neighbors.append([Olevel, simd, NbTh, n1_thrd_block - 16, n2_thrd_block, n3_thrd_block])
 	if n1_thrd_block < n1:
-		neighbors.append([Olevel, simd, NbTh, n1_thrd_block * 2, n2_thrd_block, n3_thrd_block])
+		neighbors.append([Olevel, simd, NbTh, n1_thrd_block + 16, n2_thrd_block, n3_thrd_block])
 
 	# n2_thrd_block
 	if n2_thrd_block > 1:
-		neighbors.append([Olevel, simd, NbTh, n1_thrd_block, int(n2_thrd_block / 2), n3_thrd_block])
+		neighbors.append([Olevel, simd, NbTh, n1_thrd_block, n2_thrd_block - 1, n3_thrd_block])
 	if n2_thrd_block < n2:
-		neighbors.append([Olevel, simd, NbTh, n1_thrd_block, n2_thrd_block * 2, n3_thrd_block])
+		neighbors.append([Olevel, simd, NbTh, n1_thrd_block, n2_thrd_block + 1, n3_thrd_block])
+
 	# n3_thrd_block
 	if n3_thrd_block > 1:
-		neighbors.append([Olevel, simd, NbTh, n1_thrd_block, n2_thrd_block, int(n3_thrd_block / 2)])
+		neighbors.append([Olevel, simd, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block - 1])
 	if n3_thrd_block < n3:
-		neighbors.append([Olevel, simd, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block * 2])
+		neighbors.append([Olevel, simd, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block + 1])
 
 	return neighbors
 
