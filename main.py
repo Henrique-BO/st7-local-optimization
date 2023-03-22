@@ -3,50 +3,62 @@ import argparse
 from algorithms import Greedy, ParallelGreedy, SimulatedAnnealing, TabuSA, TunnelingSA, LAHC
 
 if __name__ == "__main__":
+    # CLI arguments
     parser = argparse.ArgumentParser(
                     prog='ISO3DFD Optimizer',
-                    description='Optimizer for ISO3DFD parameters')
-    parser.add_argument("-a", "--algorithm", help="Algorithm to be used", type=str, required=True)
-    parser.add_argument("-n1", help="n1 dimension in problem size", type=int, required=True)
-    parser.add_argument("-n2", help="n2 dimension in problem size", type=int, required=True)
-    parser.add_argument("-n3", help="n3 dimension in problem size", type=int, required=True)
-    parser.add_argument("-k", help="Maximum number of iterations", type=int, required=True)
+                    description='Optimize the ISO3DFD parameters (Olevel, SIMD, NbTh, n2_thrd_block, n2_thrd_block, n3_thrd_block)\
+                                 using the chosen algorithm',
+                    )
 
-    parser.add_argument("-T0", help="Initial temperature for Simulated Annealing", type=float)
-    parser.add_argument("-decay", help="Decay function for Simulated Annealing", type=str)
-    parser.add_argument("-tabu", help="Tabu list size", type=int)
-    parser.add_argument("-cost", help="Cost function for Tunneling", type=str)
-    parser.add_argument("-Etunnel", help="Tunneling energy", type=float)
-    parser.add_argument("-Lh", help="List size for LAHC", type=int)
-
-    parser.add_argument("Olevel", help="Initial Olevel", type=str)
-    parser.add_argument("simd", help="Initial simd", type=str)
-    parser.add_argument("NbTh", help="Initial number of threads", type=int)
-    parser.add_argument("n1_thrd_block", help="Initial n1_thrd_block", type=int)
-    parser.add_argument("n2_thrd_block", help="Initial n2_thrd_block", type=int)
-    parser.add_argument("n3_thrd_block", help="Initial n3_thrd_block", type=int)
+    # Positional arguments
+    algo_list = ["ghc", "pghc", "sa", "tabu_sa", "tunnel_sa", "lahc"]
+    parser.add_argument("algo", choices=algo_list, help="Algorithm to use in optimization", type=str)
     
+    # Optional arguments
+    parser.add_argument("-n", help="Problem size separated by spaces", type=int, default=[256, 256, 256], 
+                        nargs=3, metavar=("n1","n2","n3"))
+    parser.add_argument("-k", help="Maximum number of iterations", type=int, default=200)
+    parser.add_argument("-S0", help="Initial solution", nargs=6, 
+                        metavar=("Olevel","simd","NbTh","n1_thrd_block","n2_thrd_block","n3_thrd_block"))
+    parser.add_argument("-T0", help="Initial temperature for Simulated Annealing", type=float, default=100)
+    parser.add_argument("-decay", help="Decay function for Simulated Annealing", type=str, default="geometric")
+    parser.add_argument("-tabu", help="Tabu list size", type=int, default=5)
+    parser.add_argument("-cost", help="Cost function for Tunneling", type=str, default="stochastic")
+    parser.add_argument("-Etunnel", help="Tunneling energy", type=float, default=0.0)
+    parser.add_argument("-Lh", help="List size for LAHC", type=int, default=10)
+    
+    # Parse arguments
     args = parser.parse_args()
+    n1, n2, n3 = args.n
+    if args.S0 == None:
+        S0 = ["Ofast", "avx512", 32, n1, 4, 4]
+    else:
+        S0 = args.S0
+        for i in range(3,7):
+            S0[i] = int(S0[i])
 
-    S0 = [args.Olevel, args.simd, args.NbTh, args.n1_thrd_block, args.n2_thrd_block, args.n3_thrd_block]
-    if args.algorithm == "ghc":
-        algo = Greedy(args.n1, args.n2, args.n3, S0, args.k)
-    elif args.algorithm == "pghc":
-        algo = ParallelGreedy(args.n1, args.n2, args.n3, S0, args.k)
-    elif args.algorithm == "sa":
-        assert args.T0 != None and args.decay != None
-        algo = SimulatedAnnealing(args.n1, args.n2, args.n3, S0, args.k, args.T0, args.decay)
-    elif args.algorithm == "tabu_sa":
-        assert args.T0 != None and args.decay != None
-        algo = TabuSA(args.n1, args.n2, args.n3, S0, args.k, args.T0, args.temp_decay, args.tabu)
-    elif args.algorithm == "tunnel_sa":
-        assert args.T0 != None and args.decay != None and args.cost != None and args.Etunnel != None
-        algo = TunnelingSA(args.n1, args.n2, args.n3, S0, args.k, args.T0, args.temp_decay, args.cost, args.Etunnel)
-    elif args.algorithm == "lahc":
-        assert args.Lh != None
-        algo = LAHC(args.n1, args.n2, args.n3, S0, args.k, args.Lh)
+    # Identify and initialize chosen algorithm
+    if args.algo == "ghc":
+        algo = Greedy(n1, n2, n3, S0, args.k)
+
+    elif args.algo == "pghc":
+        algo = ParallelGreedy(n1, n2, n3, S0, args.k)
+    
+    elif args.algo == "sa":
+        algo = SimulatedAnnealing(n1, n2, n3, S0, args.k, args.T0, args.decay)
+    
+    elif args.algo == "tabu_sa":
+        algo = TabuSA(n1, n2, n3, S0, args.k, args.T0, args.temp_decay, args.tabu)
+    
+    elif args.algo == "tunnel_sa":
+        algo = TunnelingSA(n1, n2, n3, S0, args.k, args.T0, args.temp_decay, args.cost, args.Etunnel)
+    
+    elif args.algo == "lahc":
+        algo = LAHC(n1, n2, n3, S0, args.k, args.Lh)
+    
     else:
         raise ValueError("Invalid algorithm")
 
+    # Run and save optimization trial
     algo.optimize()
     algo.save()

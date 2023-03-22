@@ -2,8 +2,44 @@ import random
 import math
 import time
 
-from common import Algorithm
 from common import run, neighborhood
+
+
+class Algorithm:
+
+	name = ""
+	full_name = ""
+
+	def __init__(self, n1, n2, n3, S0, k_max):
+		self.n1 = n1
+		self.n2 = n2
+		self.n3 = n3
+		self.S0 = S0
+		self.k_max = k_max
+
+		self.params = {
+			"method": self.name,
+			"n1": self.n1,
+			"n2": self.n2,
+			"n3": self.n3,
+			"S0": self.S0,
+			"n_iter": self.k_max,
+		}
+
+	def print_params(self):
+		print(self.full_name)
+		print(self.params)
+
+	def cost(self, S):
+		return run(S, self.n1, self.n2, self.n3)
+
+	def optimize(self):
+		raise NotImplementedError
+
+	def save(self):
+		res = Result()
+		res.set_data(self.params, self.S_list, self.E_list, self.S_best, self.E_best, self.runtime)
+		res.save()
 
 
 class Greedy(Algorithm):
