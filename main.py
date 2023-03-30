@@ -93,7 +93,7 @@ if __name__ == "__main__":
         S = [args.Olevel, args.simd, args.NbTh, args.n1_thrd_block, args.n2_thrd_block, args.n3_thrd_block]
         dram_energy,pkg_energy,combined = run_energy_final(S, args.n1, args.n2, args.n3)
 
-        print("Analysing energy consumption for: ", S, " , and problem size: ", n1, "x", n2, "x", n3)
+        print("Analysing energy consumption for: ", S, ", and problem size: ", args.n1, "x", args.n2, "x", args.n3)
         print("DRAM_energy: ",dram_energy, " kJ")
         print("PKG_energy: ",pkg_energy, " kJ")
         print("DRAM_PKG_combined ", combined, " kJ")
