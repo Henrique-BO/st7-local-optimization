@@ -2,7 +2,7 @@ import random
 import math
 import time
 
-from common import run, neighborhood
+from common import run, neighborhood, Result
 
 
 class Algorithm:
@@ -38,6 +38,8 @@ class Algorithm:
 
 	def save(self):
 		res = Result()
+		print("Executed in", self.runtime, "s")
+		print("Best solution:", self.S_best, "with", self.E_best, "MPoints/s")
 		res.set_data(self.params, self.S_list, self.E_list, self.S_best, self.E_best, self.runtime)
 		res.save()
 

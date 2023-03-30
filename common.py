@@ -17,7 +17,7 @@ def get_algo_by_name(name):
 		"sa": "Simulated Annealing",
 		"tabu_sa": "Tabu SA",
 		"tunnel_sa": "Tunneling SA",
-		"sa": "LAHC"
+		"lahc": "Late Acceptance Hill Climbing"
 	}
 	return algo_dict[name]
 
@@ -102,14 +102,13 @@ class Result:
 			label = f"{self.id:05d}"
 		if title == None:
 			title = get_algo_by_name(self.params["method"])
+		# plt.rcParams.update({'font.size': 22})
 		plt.plot(self.data["E"], label=label)
 		plt.title(title)
 		plt.xlabel("Iteration")
 		plt.ylabel("Throughput (MPoints/s)")
 		plt.legend()
 		plt.grid(True)
-
-
 
 
 def make(Olevel, simd):
