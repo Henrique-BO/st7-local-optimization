@@ -2,7 +2,7 @@ import argparse
 import matplotlib.pyplot as plt
 
 from algorithms import Greedy, ParallelGreedy, SimulatedAnnealing, TabuSA, TunnelingSA, LAHC
-from common import Result
+from common import Result, run_energy_final
 
 if __name__ == "__main__":
     # CLI argument parser
@@ -36,12 +36,16 @@ if __name__ == "__main__":
     energy_parser = subparsers.add_parser("energy",
                         description="Evaluate energy consumption of a specific solution"
                         )
+    energy_parser.add_argument("n1", type=int)
+    energy_parser.add_argument("n2", type=int)
+    energy_parser.add_argument("n3", type=int)
     energy_parser.add_argument("Olevel", type=str)
     energy_parser.add_argument("simd", type=str)
     energy_parser.add_argument("NbTh", type=int)
     energy_parser.add_argument("n1_thrd_block", type=int)
     energy_parser.add_argument("n2_thrd_block", type=int)
     energy_parser.add_argument("n3_thrd_block", type=int)
+    
 
     # Results visualization
     results_parser = subparsers.add_parser("results",
@@ -85,8 +89,15 @@ if __name__ == "__main__":
         algo.save()
 
     elif args.command == "energy":
+        #n1, n2, n3 = args.n
         S = [args.Olevel, args.simd, args.NbTh, args.n1_thrd_block, args.n2_thrd_block, args.n3_thrd_block]
-        print("Analysing energy consumption for", S)
+        dram_energy,pkg_energy,combined = run_energy_final(S, args.n1, args.n2, args.n3)
+
+        print("Analysing energy consumption for: ", S, " , and problem size: ", n1, "x", n2, "x", n3)
+        print("DRAM_energy: ",dram_energy, " kJ")
+        print("PKG_energy: ",pkg_energy, " kJ")
+        print("DRAM_PKG_combined ", combined, " kJ")
+
 
     elif args.command == "results":
         print(args)

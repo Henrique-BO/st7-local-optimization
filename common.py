@@ -136,7 +136,7 @@ def run_iso3dfd(n1, n2, n3, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block, f
 def run_energy(n1, n2, n3, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block, filename):
 	# log into John3 machine from Chome with "su -" command.
 	cmd = f"/opt/cpu_monitor/cpu_monitor.x --csv --plot-cmd=/opt/cpu_monitor/scripts/plot_grp2.sh --quiet --redirect -- {os.path.dirname(os.path.realpath(__file__))}/bin/{filename} {n1} {n2} {n3} {NbTh} 100 {n1_thrd_block} {n2_thrd_block} {n3_thrd_block}"
-	print("cmd: ", cmd)
+	#print("cmd: ", cmd)
 	res = subprocess.run(cmd,shell=True,stdout=subprocess.PIPE, cwd="/opt/cpu_monitor/scripts")
 	#os.system(cmd)
 
@@ -176,11 +176,11 @@ def csv_to_energy(csv_path):
 
 
         df.drop(idx, inplace=True)
-        print('filter out {} rows'.format(idx.size))
+        #print('filter out {} rows'.format(idx.size))
         (max_row, max_col) = df.shape
-        print('row: {}, col: {}'.format(max_row,max_col))
+        #print('row: {}, col: {}'.format(max_row,max_col))
         df[df.select_dtypes(include=[np.number]).ge(0).all(1)]
-        print('row: {}, col: {}'.format(max_row,max_col))
+        #print('row: {}, col: {}'.format(max_row,max_col))
 
         power_pkg_table = df.filter(regex=("^PW_PKG[0-9]*"))
         power_dram_table = df.filter(regex=("^PW_DRAM[0-9]*"))
@@ -315,33 +315,51 @@ if __name__ == "__main__":
 	#print("PKG_energy: ",pkg_energy)
 	#print("DRAM_PKG_combined ", combined)
 	# result: 
-	# DRAM_energy:  0.56222735
-	# PKG_energy:  1.0650035
-	# DRAM_PKG_combined  1.6272308500000001
+	# DRAM_energy:  0.6022326
+	# PKG_energy:  1.13557145
+	# DRAM_PKG_combined  1.73780405
 	# another run result:
-	# DRAM_energy:  0.55404925
-	# PKG_energy:  1.0850037499999998
-	# DRAM_PKG_combined  1.6390529999999999
+	# DRAM_energy:  0.6052551000000002
+	# PKG_energy:  1.1351570999999998
+	# DRAM_PKG_combined  1.7404122
 
 	# another good result from LAHC
 	# params: "['Ofast', 'avx2', 32, 512, 2, 8]"
 	# throughput: 2214.14
 	# runtime: 1238
 	# problem size: 512x512x512
-	dram_energy,pkg_energy,combined = run_energy_final(['Ofast', 'avx2', 32, 512, 2, 8], n1=512, n2=512, n3=512)
+	#dram_energy,pkg_energy,combined = run_energy_final(['Ofast', 'avx2', 32, 512, 2, 8], n1=512, n2=512, n3=512)
+	#print("DRAM_energy: ",dram_energy)
+	#print("PKG_energy: ",pkg_energy)
+	#print("DRAM_PKG_combined ", combined)
+	# result: 
+	# DRAM_energy:  0.66003325
+	# PKG_energy:  1.2441069999999999
+	# DRAM_PKG_combined  1.9041402499999998
+	# other result:
+	# DRAM_energy:  0.6177119
+	# PKG_energy:  1.14687535
+	# DRAM_PKG_combined  1.76458725
+
+	# another good result from simulated annealing
+	# params: "['Ofast', 'avx2', 32, 256, 4, 8]"
+	# throughput: 1971.86
+	# runtime: 164
+	# problem size: 256x256x256
+	dram_energy,pkg_energy,combined = run_energy_final(['Ofast', 'avx2', 32, 256, 4, 8], n1=256, n2=256, n3=256)
 	print("DRAM_energy: ",dram_energy)
 	print("PKG_energy: ",pkg_energy)
 	print("DRAM_PKG_combined ", combined)
-	# result: 
-	# DRAM_energy:  0.5622676
-	# PKG_energy:  1.0636435
-	# DRAM_PKG_combined  1.6259111
-	# other result:
-	# DRAM_energy:  0.55404925
-	# PKG_energy:  1.0850037499999998
-	# DRAM_PKG_combined  1.6390529999999999
+	# result:
+	# DRAM_energy:  0.1393227
+	# PKG_energy:  0.27969120000000003
+	# DRAM_PKG_combined  0.41901390000000005
+	# another result:
+	# DRAM_energy:  0.14932855
+	# PKG_energy:  0.3178266
+	# DRAM_PKG_combined  0.46715515
 
-
+	#random trial value
 	#dram_energy,pkg_energy,combined = run_energy_final(['Ofast', 'avx512', 32, 16, 145, 8], n1=256, n2=256, n3=256)
 	#print("DRAM_energy: ",dram_energy)
 	#print("PKG_energy: ",pkg_energy)
