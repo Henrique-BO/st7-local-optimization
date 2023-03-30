@@ -6,6 +6,9 @@ from common import run, neighborhood, Result
 
 
 class Algorithm:
+	"""
+	Abstract class for local search algorithm
+	"""
 
 	name = ""
 	full_name = ""
@@ -90,55 +93,6 @@ class Greedy(Algorithm):
 		self.E_list = E_list
 		self.runtime = time.time() - time0
 
-
-class ParallelGreedy(Algorithm):
-
-	name = "pghc"
-	full_name = "Parallel Greedy Hill Climbing"
-
-	def __init__(self, n1, n2, n3, S0, k_max):
-		super().__init__(n1, n2, n3, S0, k_max)
-
-	def optimize(self):
-		time0 = time.time()
-		self.print_params()
-
-		S_best = self.S0
-		TabE = []
-		E_best = self.cost(S_best)
-		S_list = [S_best]
-		E_list = [E_best]
-		L_neigh=neighborhood(S_best, self.n1, self.n2, self.n3)
-		#print("L_eigh:", L_neigh)
-		k=0
-		NewBetterS=True
-		while(k < self.k_max and NewBetterS):
-			for i in range(len(L_neigh)):
-				#print("L_neigh[i]: ", L_neigh[i])
-				TabE.append(self.cost(L_neigh[i]))
-				#print(i,": ", TabE[i])
-			j = 0
-			for i in range(len(L_neigh)):
-				if TabE[i] > TabE[j]:
-					j = i
-			E=TabE[j]
-			S=L_neigh[j]
-			if E>E_best:
-				S_best=S
-				E_best=E
-				L_neigh=neighborhood(S_best, self.n1, self.n2, self.n3)
-			else:
-				NewBetterS=False
-			k=k+1
-			S_list.append(S)
-			E_list.append(E)
-		
-		self.S_best = S_best
-		self.E_best = E_best
-		self.S_list = S_list
-		self.E_list = E_list
-		self.runtime = time.time() - time0
-		
 
 class SimulatedAnnealing(Algorithm):
 
@@ -394,7 +348,6 @@ class LAHC(Algorithm):
 			if E > fitness[v]:
 				fitness[v] = E
 
-			print("\t", v, fitness)			
 			S_list.append(S)
 			E_list.append(E)
 		

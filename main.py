@@ -1,7 +1,7 @@
 import argparse
 import matplotlib.pyplot as plt
 
-from algorithms import Greedy, ParallelGreedy, SimulatedAnnealing, TabuSA, TunnelingSA, LAHC
+from algorithms import Greedy, SimulatedAnnealing, TabuSA, TunnelingSA, LAHC
 from common import Result, run_energy_final
 
 if __name__ == "__main__":
@@ -11,7 +11,7 @@ if __name__ == "__main__":
                     description='Perform throughput optimization, energy evaluation or results visualization of ISO3DFD performance',
                     )
     subparsers = parser.add_subparsers(title="Commands", dest="command")
-    algo_list = ["ghc", "pghc", "sa", "tabu_sa", "tunnel_sa", "lahc"]
+    algo_list = ["ghc", "sa", "tabu_sa", "tunnel_sa", "lahc"]
     
     # Optimization
     opti_parser = subparsers.add_parser("optimize",
@@ -65,20 +65,18 @@ if __name__ == "__main__":
             S0 = ["Ofast", "avx512", 32, n1, 4, 4]
         else:
             S0 = args.S0
-            for id in range(3,7):
+            for id in range(3,6):
                 S0[id] = int(S0[id])
 
         # Identify and initialize chosen algorithm
         if args.algo == "ghc":
             algo = Greedy(n1, n2, n3, S0, args.k)
-        elif args.algo == "pghc":
-            algo = ParallelGreedy(n1, n2, n3, S0, args.k)
         elif args.algo == "sa":
             algo = SimulatedAnnealing(n1, n2, n3, S0, args.k, args.T0, args.decay)
         elif args.algo == "tabu_sa":
-            algo = TabuSA(n1, n2, n3, S0, args.k, args.T0, args.temp_decay, args.tabu)
+            algo = TabuSA(n1, n2, n3, S0, args.k, args.T0, args.decay, args.tabu)
         elif args.algo == "tunnel_sa":
-            algo = TunnelingSA(n1, n2, n3, S0, args.k, args.T0, args.temp_decay, args.cost, args.Etunnel)
+            algo = TunnelingSA(n1, n2, n3, S0, args.k, args.T0, args.decay, args.cost, args.Etunnel)
         elif args.algo == "lahc":
             algo = LAHC(n1, n2, n3, S0, args.k, args.Lh)
         else:
@@ -89,11 +87,10 @@ if __name__ == "__main__":
         algo.save()
 
     elif args.command == "energy":
-        #n1, n2, n3 = args.n
         S = [args.Olevel, args.simd, args.NbTh, args.n1_thrd_block, args.n2_thrd_block, args.n3_thrd_block]
         dram_energy,pkg_energy,combined = run_energy_final(S, args.n1, args.n2, args.n3)
 
-        print("Analysing energy consumption for: ", S, " , and problem size: ", n1, "x", n2, "x", n3)
+        print("Analysing energy consumption for: ", S, " , and problem size: ", args.n1, "x", args.n2, "x", args.n3)
         print("DRAM_energy: ",dram_energy, " kJ")
         print("PKG_energy: ",pkg_energy, " kJ")
         print("DRAM_PKG_combined ", combined, " kJ")
