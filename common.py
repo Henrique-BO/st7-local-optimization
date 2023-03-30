@@ -2,6 +2,7 @@ import subprocess
 import os
 import json
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 
 
@@ -128,11 +129,90 @@ def make(Olevel, simd):
 		res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
 	return filename
 
-
 def run_iso3dfd(n1, n2, n3, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block, filename):
 	cmd = f"KMP_AFFINITY=balanced,granularity=core ./bin/{filename} {n1} {n2} {n3} {NbTh} 100 {n1_thrd_block} {n2_thrd_block} {n3_thrd_block} > output.txt"
 	# cmd = f"KMP_AFFINITY=compact ./bin/{filename} {n1} {n2} {n3} {NbTh} 100 {n1_thrd_block} {n2_thrd_block} {n3_thrd_block} > output.txt"
 	res = subprocess.run(cmd,shell=True,stdout=subprocess.PIPE)
+
+def run_energy(n1, n2, n3, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block, filename):
+	# log into John3 machine from Chome with "su -" command.
+	cmd = f"/opt/cpu_monitor/cpu_monitor.x --csv --plot-cmd=/opt/cpu_monitor/scripts/plot_grp2.sh --quiet --redirect -- {os.path.dirname(os.path.realpath(__file__))}/bin/{filename} {n1} {n2} {n3} {NbTh} 100 {n1_thrd_block} {n2_thrd_block} {n3_thrd_block}"
+	print("cmd: ", cmd)
+	res = subprocess.run(cmd,shell=True,stdout=subprocess.PIPE, cwd="/opt/cpu_monitor/scripts")
+	#os.system(cmd)
+
+#def run_energy(n1, n2, n3, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block, filename):
+#	# log into John3 machine from Chome with "su -" command.
+#	user_filepath = os.path.dirname(os.path.realpath(__file__))
+#	cmd = f"/opt/cpu_monitor/cpu_monitor.x --csv --plot-cmd={user_filepath}/plot_grp2.sh --quiet --redirect -- {user_filepath}/bin/{filename} {n1} {n2} {n3} {NbTh} 100 {n1_thrd_block} {n2_thrd_block} {n3_thrd_block}"
+#	print("cmd: ", cmd)
+#	res = subprocess.run(cmd,shell=True,stdout=subprocess.PIPE, cwd="/opt/cpu_monitor/scripts")
+#	#os.system(cmd)
+
+# This program makes sense of the information in a CSV file, integrates power measurements and outputs 3 energy values
+def csv_to_energy(csv_path):
+        """takes a csv file from cpu_monitor and return the energy consumed"""
+        idx = pd.Index([],dtype='int64')
+
+        #delete line in csv
+        with open(csv_path,'r') as inp:
+            lines = inp.readlines()
+            ptr = 1
+            with open("/opt/cpu_monitor/scripts/Database_edited2.txt",'w') as out:
+                for line in lines:
+                    if ptr != 3:
+                        out.write(line)
+                    ptr += 1
+
+        #convert txt to csv
+        df = pd.read_csv("/opt/cpu_monitor/scripts/Database_edited2.txt")
+        df.to_csv("/opt/cpu_monitor/scripts/Database_edited2.csv", index=None)
+        df = pd.read_csv("/opt/cpu_monitor/scripts/Database_edited2.csv",sep=';')
+
+        del df[df.columns[-1]] # to delete last column with null values
+        sub_df = df.filter(regex=("^PW_*"))
+        (max_row, max_col) = sub_df.shape
+        for i in range(0, max_col):
+                idx = idx.union(sub_df[sub_df.iloc[:,i].astype(float)>8000.0].index)
+
+
+        df.drop(idx, inplace=True)
+        print('filter out {} rows'.format(idx.size))
+        (max_row, max_col) = df.shape
+        print('row: {}, col: {}'.format(max_row,max_col))
+        df[df.select_dtypes(include=[np.number]).ge(0).all(1)]
+        print('row: {}, col: {}'.format(max_row,max_col))
+
+        power_pkg_table = df.filter(regex=("^PW_PKG[0-9]*"))
+        power_dram_table = df.filter(regex=("^PW_DRAM[0-9]*"))
+
+        power_row, power_col = power_pkg_table.shape
+        pkg = power_col
+
+        t  = df['TIME'].to_numpy()
+        t_min = np.min(t)
+        t_max = np.max(t)
+
+        dram_energy = 0.0
+        pkg_energy = 0.0
+        for i in range(0, power_col):
+                dram_energy += np.trapz(power_dram_table.iloc[:,i].to_numpy(),t)/1000.0
+                pkg_energy += np.trapz(power_pkg_table.iloc[:,i].to_numpy(),t)/1000.0
+        return dram_energy,pkg_energy,dram_energy+pkg_energy
+
+# uses input parameters to evaluate to get the energy consumption of the program. outputs 3 energy values in kJ (dram energy, package energy, and sum of dram and package energies)
+def run_energy_final(params, n1=512, n2=512, n3=512):
+	Olevel = params[0]
+	simd = params[1]
+	NbTh = params[2]
+	n1_thrd_block = params[3]
+	n2_thrd_block = params[4]
+	n3_thrd_block = params[5]
+
+	filename = make(Olevel, simd)
+	run_energy(n1, n2, n3, NbTh, n1_thrd_block, n2_thrd_block, n3_thrd_block, filename)
+	dram_energy,pkg_energy,combined = csv_to_energy("/opt/cpu_monitor/scripts/current_csv.csv")
+	return dram_energy,pkg_energy,combined
 
 def parse_output():
 	with open('output.txt', 'r') as f:
@@ -226,13 +306,44 @@ def neighborhood(params, n1, n2, n3):
 #-----------------------------------------------------------------
 
 if __name__ == "__main__":
-	params = ["Ofast", "avx", 32, 16, 8, 8]
-	t = run(params)
-	print(t)
+	# best result from simulated annealing 
+	# params: "['Ofast', 'avx512', 32, 496, 1, 8]"
+	# throughput: 2234.62
+	# runtime: 1226
+	# problem size: 512x512x512
+	#dram_energy,pkg_energy,combined = run_energy_final(['Ofast', 'avx512', 32, 496, 1, 8], n1=512, n2=512, n3=512)
+	#print("DRAM_energy: ",dram_energy)
+	#print("PKG_energy: ",pkg_energy)
+	#print("DRAM_PKG_combined ", combined)
+	# result: 
+	# DRAM_energy:  0.56222735
+	# PKG_energy:  1.0650035
+	# DRAM_PKG_combined  1.6272308500000001
+	# another run result:
+	# DRAM_energy:  0.55404925
+	# PKG_energy:  1.0850037499999998
+	# DRAM_PKG_combined  1.6390529999999999
 
-	neighbors = neighborhood(params, 512, 512, 512)
-	print(neighbors)
+	# another good result from LAHC
+	# params: "['Ofast', 'avx2', 32, 512, 2, 8]"
+	# throughput: 2214.14
+	# runtime: 1238
+	# problem size: 512x512x512
+	dram_energy,pkg_energy,combined = run_energy_final(['Ofast', 'avx2', 32, 512, 2, 8], n1=512, n2=512, n3=512)
+	print("DRAM_energy: ",dram_energy)
+	print("PKG_energy: ",pkg_energy)
+	print("DRAM_PKG_combined ", combined)
+	# result: 
+	# DRAM_energy:  0.5622676
+	# PKG_energy:  1.0636435
+	# DRAM_PKG_combined  1.6259111
+	# other result:
+	# DRAM_energy:  0.55404925
+	# PKG_energy:  1.0850037499999998
+	# DRAM_PKG_combined  1.6390529999999999
 
-	params2 = neighbors[5]
-	t = run(params)
-	print(t)
+
+	#dram_energy,pkg_energy,combined = run_energy_final(['Ofast', 'avx512', 32, 16, 145, 8], n1=256, n2=256, n3=256)
+	#print("DRAM_energy: ",dram_energy)
+	#print("PKG_energy: ",pkg_energy)
+	#print("DRAM_PKG_combined ", combined)
