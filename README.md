@@ -2,6 +2,12 @@
 
 This program provides various tools for optimizing the performance of ISO3DFD, a program that solves the 3D acoustic isotropic wave-equation. It is the result of the course project on High Performance Computing done in CentraleSupélec in partnership with Intel. 
 
+**Members:**
+- Henrique BARROS OLIVEIRA 
+- Yahya EL FATAOUI 
+- Thomas NGUYEN 
+- Sneha SHAKYA
+
 ## Installation
 
 **Requirements:** 
